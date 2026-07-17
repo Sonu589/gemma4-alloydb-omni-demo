@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1500T Press | AI Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #f8fafc; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom scrollbar for logs */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        
+        /* Dynamic Glow Effects */
+        .glow-red { box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); border-color: #ef4444 !important; }
+        .glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="bg-blue-600 p-2 rounded-lg"><i class="fa-solid fa-industry text-white text-xl"></i></div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">1500T Forging Press</h1>
+                <p class="text-xs text-blue-400 font-mono tracking-widest uppercase">Air-Gapped AI Telemetry</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-xs font-mono text-slate-300">AlloyDB Omni</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                <div class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-xs font-mono text-slate-300">Gemma 4 Local</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+        
+        <!-- Left Panel: Controls & KPIs -->
+        <div class="col-span-1 lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- Controls -->
+            <div class="bg-slate-900 rounded-xl border border-slate-800 p-5">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Operations Control</h2>
+                <div class="flex flex-col gap-3">
+                    <button onclick="setMode('normal')" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors border border-slate-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check-circle text-emerald-400"></i> Normal Operation
+                    </button>
+                    <button onclick="setMode('anomaly')" class="px-4 py-2.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-lg text-sm font-semibold transition-colors border border-red-900/50 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Simulate Failure
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-2 gap-4">
+                <div id="card-pressure" class="bg-slate-900 rounded-xl border border-slate-800 p-4 transition-all duration-300">
+                    <p class="text-xs text-slate-400 uppercase mb-1">Pressure</p>
+                    <p class="text-2xl font-bold font-mono"><span id="val-pressure">280.0</span> <span class="text-sm text-slate-500">bar</span></p>
+                </div>
+                <div id="card-vib" class="bg-slate-900 rounded-xl border border-slate-800 p-4 transition-all duration-300">
+                    <p class="text-xs text-slate-400 uppercase mb-1">Vibration Z</p>
+                    <p class="text-2xl font-bold font-mono"><span id="val-vib">1.8</span> <span class="text-sm text-slate-500">mm/s</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Charts & Logs -->
+        <div class="col-span-1 lg:col-span-9 flex flex-col gap-6 overflow-hidden">
+            
+            <!-- Live Chart -->
+            <div class="bg-slate-900 rounded-xl border border-slate-800 p-5 flex-1 flex flex-col min-h-[300px]">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Live Sensor Stream</h2>
+                    <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-400 font-mono">1 Hz Polling</span>
+                </div>
+                <div class="relative w-full flex-1">
+                    <canvas id="telemetryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- AI Insight Log -->
+            <div class="bg-slate-900 rounded-xl border border-slate-800 h-64 flex flex-col shrink-0">
+                <div class="border-b border-slate-800 px-5 py-3 flex justify-between items-center bg-slate-900/50">
+                    <h2 class="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                        <i class="fa-solid fa-microchip mr-2"></i>AlloyDB AI Insights
+                    </h2>
+                </div>
+                <div id="log-container" class="flex-1 overflow-y-auto p-4 font-mono text-sm flex flex-col gap-3">
+                    <div class="text-slate-500"><span class="text-slate-600">--:--:--</span> [SYSTEM] UI Initialized. Awaiting telemetry...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Chart Initialization
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const maxDataPoints = 60;
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: maxDataPoints}, () => ''),
+                datasets: [
+                    {
+                        label: 'Pressure (bar)',
+                        data: Array.from({length: maxDataPoints}, () => null),
+                        borderColor: '#3b82f6', // Blue
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Vibration (mm/s)',
+                        data: Array.from({length: maxDataPoints}, () => null),
+                        borderColor: '#ef4444', // Red
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        borderDash: [5, 5],
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { type: 'linear', position: 'left', min: 240, max: 300, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                    y1: { type: 'linear', position: 'right', min: 0, max: 10, grid: { display: false }, ticks: { color: '#94a3b8' } }
+                },
+                animation: { duration: 0 }
+            }
+        });
+
+        // DOM Elements
+        const valPressure = document.getElementById('val-pressure');
+        const valVib = document.getElementById('val-vib');
+        const cardPressure = document.getElementById('card-pressure');
+        const cardVib = document.getElementById('card-vib');
+        const logContainer = document.getElementById('log-container');
+        
+        let lastInsight = null;
+
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const div = document.createElement('div');
+            let color = type === 'alert' ? 'text-red-400 font-bold bg-red-950/30 p-2 rounded border border-red-900/50' : 'text-slate-300';
+            let prefix = type === 'alert' ? '[GEMMA INSIGHT]' : '[INFO]';
+            
+            div.innerHTML = `<span class="text-slate-600 mr-2">${time}</span> <span class="${color}">${prefix} ${message}</span>`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        async function setMode(mode) {
+            await fetch('/api/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: mode })
+            });
+            addLog(`Operator set simulation mode to: ${mode.toUpperCase()}`);
+        }
+
+        async function pollData() {
+            try {
+                const res = await fetch('/api/stream');
+                const data = await res.json();
+                
+                // Update UI Values
+                valPressure.innerText = data.pressure.toFixed(1);
+                valVib.innerText = data.vibration.toFixed(2);
+                
+                // Update Chart
+                chart.data.datasets[0].data.push(data.pressure);
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.push(data.vibration);
+                chart.data.datasets[1].data.shift();
+                chart.update();
+
+                // Style handling for anomalies
+                if (data.pressure < 260 || data.vibration > 4.5) {
+                    cardPressure.classList.add('glow-red');
+                    cardVib.classList.add('glow-red');
+                } else {
+                    cardPressure.classList.remove('glow-red');
+                    cardVib.classList.remove('glow-red');
+                }
+
+                // AI Insight Handling
+                if (data.insight && data.insight !== lastInsight) {
+                    lastInsight = data.insight;
+                    addLog(data.insight, 'alert');
+                }
+
+            } catch (e) {
+                console.error("Backend connection lost");
+            }
+        }
+
+        // Poll every 1 second
+        setInterval(pollData, 1000);
+        addLog('Connected to Flask Backend. Streaming data...');
+    </script>
+</body>
+</html>
